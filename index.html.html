@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NutraCalc – dose, form factor and overage calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f7f6;--surface:#fff;--ink:#14262b;--mute:#5a6e72;--rule:#d3dfdd;--accent:#0f6b66;--accent-ink:#fff;--warn:#b86e00;--soft:#e4efed;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1b1d;--surface:#16272a;--ink:#e6f0ef;--mute:#9bb0b3;--rule:#2a4044;--accent:#4fc2b8;--accent-ink:#06201e;--warn:#e8a547;--soft:#1d3336;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1b1d;--surface:#16272a;--ink:#e6f0ef;--mute:#9bb0b3;--rule:#2a4044;--accent:#4fc2b8;--accent-ink:#06201e;--warn:#e8a547;--soft:#1d3336;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 48px}
+h1{font:600 28px/1.2 "Source Serif 4",Georgia,serif;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 18px;max-width:62ch}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-bottom:18px;overflow-x:auto}
+nav button{background:none;border:0;color:var(--mute);font:500 15px "IBM Plex Sans",sans-serif;padding:10px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--accent);border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{display:none}.panel.on{display:block}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px;margin-bottom:16px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th{font-weight:600;font-size:12.5px;color:var(--mute);text-align:left;padding:6px 6px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:5px 4px;border-bottom:1px solid var(--rule);vertical-align:middle}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:5px;padding:6px 7px;width:100%}
+td input.n{width:84px}td select.u{width:72px}td input.t{min-width:130px}td select.f{min-width:190px}
+.out{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap;padding:0 6px}
+.out.hl{color:var(--accent);font-weight:600}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:8px 14px;font:500 14px "IBM Plex Sans",sans-serif;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.x{background:none;color:var(--mute);border:0;font-size:18px;padding:2px 8px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px}
+.bar label{display:flex;flex-direction:column;font-size:12.5px;color:var(--mute);gap:3px}
+.bar input{width:150px}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.sum div{background:var(--soft);border-radius:6px;padding:10px 12px}
+.sum b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.sum span{font-size:12.5px;color:var(--mute)}
+.warn{color:var(--warn);font-weight:500}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.row label{font-size:12.5px;color:var(--mute);display:flex;flex-direction:column;gap:3px}
+h2{font:600 18px "Source Serif 4",Georgia,serif;margin:0 0 8px}
+.res{background:var(--soft);border-radius:6px;padding:10px 12px;margin-top:8px;font-variant-numeric:tabular-nums}
+.note{color:var(--mute);font-size:13px;max-width:78ch}
+ol,ul{padding-left:20px}li{margin-bottom:6px}
+pre.f{background:var(--soft);padding:10px 12px;border-radius:6px;overflow-x:auto;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>NutraCalc</h1>
+<p class="sub">Work out how much raw material goes into each unit of a nutraceutical product, after salt-form factor, overage and assay, and scale it to a batch.</p>
+<nav role="tablist">
+<button role="tab" aria-selected="true" data-tab="calc">Formulation</button>
+<button role="tab" aria-selected="false" data-tab="conv">Converters</button>
+<button role="tab" aria-selected="false" data-tab="dose">Daily dose check</button>
+</nav>
+
+<section class="panel on" id="calc">
+<div class="bar">
+<label>Product name<input id="pname" value="Multi-mineral tablet"></label>
+<label>Unit weight target (mg)<input id="uw" type="number" min="0" value="1200"></label>
+<label>Batch size (units)<input id="bs" type="number" min="0" value="100000"></label>
+<button class="btn" id="add">Add ingredient</button>
+<button class="btn ghost" id="copy">Copy as CSV</button>
+<button class="btn ghost" id="reset">Load example</button>
+</div>
+<div class="card scroll"><table>
+<thead><tr><th>Ingredient</th><th>Source form</th><th>Label claim</th><th>Unit</th><th>mg per IU</th><th>Active in source (%)</th><th>Overage (%)</th><th>Assay (%)</th><th>Active to add (mg)</th><th>Factor</th><th>Raw material / unit (mg)</th><th>Batch (kg)</th><th></th></tr></thead>
+<tbody id="rows"></tbody></table></div>
+<div class="sum" id="sum"></div>
+<p class="note" style="margin-top:14px">Overage is entered by you, based on your stability data and company policy. Always confirm label claims, limits and conversion factors against the current pharmacopoeia and the regulation of the market you file in.</p>
+</section>
+
+<section class="panel" id="conv">
+<div class="grid2">
+<div class="card"><h2>Salt or form factor</h2>
+<div class="row"><label>Active moiety MW (g/mol)<input id="c_a" type="number" value="65.38"></label><label>Source form MW (g/mol)<input id="c_s" type="number" value="81.38"></label></div>
+<div class="row"><label>Amount of active needed (mg)<input id="c_need" type="number" value="15"></label><label>&nbsp;</label></div>
+<div class="res" id="c_out"></div>
+<p class="note">Use the full MW of the form including water of crystallisation, for example zinc sulfate heptahydrate.</p></div>
+<div class="card"><h2>Mass and IU conversion</h2>
+<div class="row"><label>Value<input id="m_v" type="number" value="1000"></label><label>From<select id="m_f"><option>g</option><option>mg</option><option selected>mcg</option><option>IU</option></select></label></div>
+<div class="row"><label>Substance (for IU)<select id="m_sub"></select></label><label>To<select id="m_t"><option>g</option><option selected>mg</option><option>mcg</option><option>IU</option></select></label></div>
+<div class="res" id="m_out"></div></div>
+</div>
+</section>
+
+<section class="panel" id="dose">
+<div class="card" style="max-width:560px"><h2>Daily dose check</h2>
+<div class="row"><label>Amount per unit (mg)<input id="d_a" type="number" value="15"></label><label>Units per serving<input id="d_u" type="number" value="1"></label></div>
+<div class="row"><label>Servings per day<input id="d_s" type="number" value="2"></label><label>Limit to compare (mg/day)<input id="d_l" type="number" value="40"></label></div>
+<div class="res" id="d_out"></div>
+<p class="note">Enter the limit yourself from the authority you are filing with (for example a tolerable upper level or a monograph maximum). The tool does not store limits, so it never goes out of date.</p></div>
+</section>
+
+</div>
+
+<script>
+/* ---------- Engine: pure functions, no DOM. Port this file as-is to an app. ---------- */
+const Engine = {
+  toMg(value, unit, mgPerIU){
+    if(unit==='g') return value*1000;
+    if(unit==='mg') return value;
+    if(unit==='mcg') return value/1000;
+    if(unit==='IU') return value*mgPerIU;
+    return NaN;
+  },
+  fromMg(mg, unit, mgPerIU){
+    if(unit==='g') return mg/1000;
+    if(unit==='mg') return mg;
+    if(unit==='mcg') return mg*1000;
+    if(unit==='IU') return mgPerIU>0 ? mg/mgPerIU : NaN;
+    return NaN;
+  },
+  activeFraction(activeMW, formMW){ return activeMW/formMW; },
+  line(r){
+    const claimMg = Engine.toMg(r.claim, r.unit, r.mgPerIU);
+    const activeToAdd = claimMg*(1+r.overage/100);
+    const frac = (r.activePct/100)*(r.assay/100);
+    const factor = frac>0 ? 1/frac : NaN;
+    const raw = activeToAdd*factor;
+    const batchKg = raw*r.batch/1e6;
+    return {claimMg, activeToAdd, factor, raw, batchKg};
+  },
+  daily(amountMg, units, servings){ return amountMg*units*servings; }
+};
+
+/* ---------- Reference data (edit freely). Active MW and form MW in g/mol. ---------- */
+const FORMS = [
+  {n:'Direct / custom (100%)', pct:100},
+  {n:'Zinc oxide', a:65.38, s:81.38},
+  {n:'Zinc gluconate', a:65.38, s:455.68},
+  {n:'Zinc sulfate heptahydrate', a:65.38, s:287.56},
+  {n:'Magnesium oxide', a:24.305, s:40.304},
+  {n:'Magnesium sulfate heptahydrate', a:24.305, s:246.47},
+  {n:'Calcium carbonate', a:40.078, s:100.09},
+  {n:'Calcium citrate tetrahydrate', a:120.234, s:570.49},
+  {n:'Ferrous fumarate', a:55.845, s:169.90},
+  {n:'Ferrous sulfate heptahydrate', a:55.845, s:278.01},
+  {n:'Ferrous gluconate dihydrate', a:55.845, s:482.18},
+  {n:'Potassium chloride', a:39.098, s:74.55},
+  {n:'Cupric sulfate pentahydrate', a:63.546, s:249.68},
+  {n:'Sodium selenite', a:78.97, s:172.94}
+];
+FORMS.forEach(f=>{ if(f.a) f.pct = Engine.activeFraction(f.a,f.s)*100; });
+const IU = [
+  {n:'Vitamin D3 (1 IU = 0.025 mcg)', v:0.000025},
+  {n:'Vitamin E, natural d-alpha-tocopherol', v:0.67},
+  {n:'Vitamin E, synthetic dl-alpha-tocopherol', v:0.9},
+  {n:'Vitamin A, retinol', v:0.0003},
+  {n:'Vitamin A, retinyl acetate', v:0.000344},
+  {n:'Custom', v:0}
+];
+
+/* ---------- UI ---------- */
+const $=s=>document.querySelector(s);
+const fmt=(x,d=3)=>Number.isFinite(x)?(+x.toFixed(d)).toLocaleString('en-US',{maximumFractionDigits:d}):'–';
+let rows=[];
+const EXAMPLE=[
+  {name:'Zinc',form:1,claim:15,unit:'mg',mgPerIU:0,activePct:null,overage:10,assay:99},
+  {name:'Magnesium',form:4,claim:100,unit:'mg',mgPerIU:0,activePct:null,overage:5,assay:98},
+  {name:'Iron',form:8,claim:14,unit:'mg',mgPerIU:0,activePct:null,overage:10,assay:98},
+  {name:'Vitamin D3',form:0,claim:1000,unit:'IU',mgPerIU:0.000025,activePct:100,overage:20,assay:100}
+];
+function newRow(o){ const r=Object.assign({name:'',form:0,claim:0,unit:'mg',mgPerIU:0,activePct:100,overage:0,assay:100},o||{});
+  if(r.activePct==null) r.activePct=FORMS[r.form].pct; return r; }
+function load(ex){ rows=ex.map(newRow); renderRows(); calc(); }
+
+function renderRows(){
+  $('#rows').innerHTML=rows.map((r,i)=>`<tr data-i="${i}">
+  <td><input class="t" data-k="name" value="${r.name.replace(/"/g,'&quot;')}" aria-label="Ingredient"></td>
+  <td><select class="f" data-k="form" aria-label="Source form">${FORMS.map((f,j)=>`<option value="${j}" ${j==r.form?'selected':''}>${f.n}</option>`).join('')}</select></td>
+  <td><input class="n" type="number" min="0" step="any" data-k="claim" value="${r.claim}" aria-label="Label claim"></td>
+  <td><select class="u" data-k="unit" aria-label="Unit">${['g','mg','mcg','IU'].map(u=>`<option ${u==r.unit?'selected':''}>${u}</option>`).join('')}</select></td>
+  <td><input class="n" type="number" min="0" step="any" data-k="mgPerIU" value="${r.mgPerIU}" ${r.unit==='IU'?'':'disabled'} aria-label="mg per IU"></td>
+  <td><input class="n" type="number" min="0" max="100" step="any" data-k="activePct" value="${+(+r.activePct).toFixed(3)}" aria-label="Active in source percent"></td>
+  <td><input class="n" type="number" min="0" step="any" data-k="overage" value="${r.overage}" aria-label="Overage percent"></td>
+  <td><input class="n" type="number" min="0" max="100" step="any" data-k="assay" value="${r.assay}" aria-label="Assay percent"></td>
+  <td class="out" data-o="active"></td><td class="out" data-o="factor"></td><td class="out hl" data-o="raw"></td><td class="out" data-o="batch"></td>
+  <td><button class="btn x" data-del="${i}" aria-label="Remove ingredient">×</button></td></tr>`).join('');
+}
+
+function calc(){
+  const batch=+$('#bs').value||0, uw=+$('#uw').value||0; let total=0, totalKg=0;
+  rows.forEach((r,i)=>{
+    const tr=$('#rows').children[i]; if(!tr) return;
+    const L=Engine.line({claim:r.claim,unit:r.unit,mgPerIU:r.mgPerIU,activePct:r.activePct,overage:r.overage,assay:r.assay,batch});
+    tr.querySelector('[data-o=active]').textContent=fmt(L.activeToAdd,3);
+    tr.querySelector('[data-o=factor]').textContent=fmt(L.factor,4);
+    tr.querySelector('[data-o=raw]').textContent=fmt(L.raw,3);
+    tr.querySelector('[data-o=batch]').textContent=fmt(L.batchKg,3);
+    if(Number.isFinite(L.raw)){total+=L.raw; totalKg+=L.batchKg;}
+  });
+  const bal=uw-total;
+  $('#sum').innerHTML=`<div><b>${fmt(total,2)} mg</b><span>Active raw materials per unit</span></div>
+  <div><b class="${bal<0?'warn':''}">${fmt(bal,2)} mg</b><span>${bal<0?'Over the unit weight target. Reduce or rebalance.':'Left for excipients per unit'}</span></div>
+  <div><b>${fmt(totalKg,3)} kg</b><span>Active raw materials for ${fmt(batch,0)} units</span></div>
+  <div><b>${fmt(bal>0?bal*batch/1e6:0,3)} kg</b><span>Excipient blend for the batch</span></div>`;
+}
+
+$('#rows').addEventListener('input',e=>{
+  const tr=e.target.closest('tr'); if(!tr) return; const r=rows[+tr.dataset.i], k=e.target.dataset.k; if(!k) return;
+  if(k==='name') r.name=e.target.value;
+  else if(k==='form'){ r.form=+e.target.value; r.activePct=FORMS[r.form].pct; tr.querySelector('[data-k=activePct]').value=+r.activePct.toFixed(3); }
+  else if(k==='unit'){ r.unit=e.target.value; const m=tr.querySelector('[data-k=mgPerIU]'); m.disabled=r.unit!=='IU'; }
+  else r[k]=+e.target.value||0;
+  calc(); save();
+});
+$('#rows').addEventListener('click',e=>{ const d=e.target.dataset.del; if(d==null) return; rows.splice(+d,1); renderRows(); calc(); save(); });
+$('#add').onclick=()=>{ rows.push(newRow()); renderRows(); calc(); save(); };
+$('#reset').onclick=()=>{ load(EXAMPLE); save(); };
+['#bs','#uw','#pname'].forEach(s=>$(s).addEventListener('input',()=>{calc();save();}));
+$('#copy').onclick=()=>{
+  const batch=+$('#bs').value||0;
+  const head=['Ingredient','Source form','Claim','Unit','Active in source %','Overage %','Assay %','Active to add mg','Factor','Raw material mg/unit','Batch kg'];
+  const lines=rows.map(r=>{const L=Engine.line({...r,batch});return [r.name,FORMS[r.form].n,r.claim,r.unit,(+r.activePct).toFixed(3),r.overage,r.assay,L.activeToAdd.toFixed(3),L.factor.toFixed(4),L.raw.toFixed(3),L.batchKg.toFixed(3)].map(v=>`"${v}"`).join(',');});
+  const csv=[head.join(','),...lines].join('\n'); const b=$('#copy');
+  const done=()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy as CSV',1500);};
+  try{ navigator.clipboard.writeText(csv).then(done,fb); }catch(_){ fb(); }
+  function fb(){ const t=document.createElement('textarea'); t.value=csv; document.body.appendChild(t); t.select(); try{document.execCommand('copy');done();}catch(_){} t.remove(); }
+};
+
+/* tabs */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id===b.dataset.tab));
+});
+
+/* converters */
+function convCalc(){
+  const a=+$('#c_a').value,s=+$('#c_s').value,need=+$('#c_need').value; const f=a/s;
+  $('#c_out').innerHTML=s>0?`Active in form: <b>${fmt(f*100,3)}%</b><br>Factor: <b>${fmt(1/f,4)}</b><br>Form needed for ${fmt(need,3)} mg active: <b>${fmt(need/f,3)} mg</b>`:'Enter both molecular weights.';
+  const sub=IU[+$('#m_sub').value], from=$('#m_f').value, to=$('#m_t').value, v=+$('#m_v').value;
+  const needIU=(from==='IU'||to==='IU');
+  const mg=Engine.toMg(v,from,sub.v), r=Engine.fromMg(mg,to,sub.v);
+  $('#m_out').innerHTML=(needIU&&!(sub.v>0))?'Choose a substance with a known IU factor.':`${fmt(v,6)} ${from} = <b>${fmt(r,6)} ${to}</b>`;
+}
+$('#m_sub').innerHTML=IU.map((x,i)=>`<option value="${i}">${x.n}</option>`).join('');
+['c_a','c_s','c_need','m_v','m_f','m_t','m_sub'].forEach(id=>$('#'+id).addEventListener('input',convCalc));
+
+/* daily dose */
+function doseCalc(){
+  const t=Engine.daily(+$('#d_a').value,+$('#d_u').value,+$('#d_s').value), l=+$('#d_l').value;
+  $('#d_out').innerHTML=`Daily intake: <b>${fmt(t,3)} mg</b>`+(l>0?`<br>${t>l?`<span class="warn">Above the limit by ${fmt(t-l,3)} mg (${fmt(t/l*100,1)}% of limit)</span>`:`Within the limit (${fmt(t/l*100,1)}% of limit)`}`:'');
+}
+['d_a','d_u','d_s','d_l'].forEach(id=>$('#'+id).addEventListener('input',doseCalc));
+
+/* per-viewer convenience storage */
+function save(){ try{ localStorage.setItem('nutracalc',JSON.stringify({rows,bs:$('#bs').value,uw:$('#uw').value,p:$('#pname').value})); }catch(_){} }
+(function init(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem('nutracalc')||'null'); }catch(_){}
+  if(s&&Array.isArray(s.rows)&&s.rows.length){ $('#bs').value=s.bs; $('#uw').value=s.uw; $('#pname').value=s.p; rows=s.rows.map(newRow); renderRows(); calc(); }
+  else load(EXAMPLE);
+  convCalc(); doseCalc();
+})();
+</script>
+</body>
+</html>
